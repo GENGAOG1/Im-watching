@@ -1,22 +1,14 @@
 
 import os
+import ipaddress
 
 from flask import Flask, request, render_template_string
-from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
-
-# Render Reverse Proxy
-app.wsgi_app = ProxyFix(
-    app.wsgi_app,
-    x_for=1,
-    x_proto=1
-)
 
 HTML = """
 <!DOCTYPE html>
 <html lang="de">
-
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -28,16 +20,10 @@ HTML = """
     box-sizing: border-box;
 }
 
-:root {
-    --red: #ff2020;
-    --background: #050505;
-    --card: #0d0d0d;
-}
-
 body {
     margin: 0;
-    background: var(--background);
-    color: var(--red);
+    background: #050505;
+    color: #ff2020;
     font-family: Consolas, monospace;
     min-height: 100vh;
 }
@@ -87,7 +73,7 @@ h1 {
 }
 
 .status {
-    border: 1px solid var(--red);
+    border: 1px solid #ff2020;
     padding: 15px;
     margin-bottom: 25px;
     box-shadow: 0 0 15px #ff000022;
@@ -105,7 +91,7 @@ h1 {
 }
 
 .card {
-    background: var(--card);
+    background: #0d0d0d;
     border: 1px solid #5c1111;
     padding: 25px;
     transition: 0.2s;
@@ -113,7 +99,7 @@ h1 {
 }
 
 .card:hover {
-    border-color: var(--red);
+    border-color: #ff2020;
     box-shadow: 0 0 20px #ff000033;
     transform: translateY(-3px);
 }
@@ -141,15 +127,15 @@ h1 {
 
 button {
     background: #160000;
-    color: var(--red);
-    border: 1px solid var(--red);
+    color: #ff2020;
+    border: 1px solid #ff2020;
     padding: 12px 20px;
     cursor: pointer;
     font-family: inherit;
 }
 
 button:hover {
-    background: var(--red);
+    background: #ff2020;
     color: black;
 }
 
@@ -172,23 +158,17 @@ footer {
 
 <header>
     <h1>RED // NETWORK</h1>
-
-    <div class="subtitle">
-        PERSONAL NETWORK TERMINAL
-    </div>
+    <div class="subtitle">PERSONAL NETWORK TERMINAL</div>
 </header>
 
 <div class="container">
 
     <div class="status">
         <span class="online">● SYSTEM ONLINE</span>
-        &nbsp; | &nbsp;
-        CONNECTION ESTABLISHED
+        &nbsp; | &nbsp; CONNECTION ESTABLISHED
     </div>
 
-    <div class="clock" id="clock">
-        00:00:00
-    </div>
+    <div class="clock" id="clock">00:00:00</div>
 
     <div class="grid">
 
@@ -199,16 +179,12 @@ footer {
 
         <div class="card">
             <div class="label">BROWSER</div>
-            <div class="value" id="browser">
-                Wird erkannt ...
-            </div>
+            <div class="value" id="browser">Wird erkannt ...</div>
         </div>
 
         <div class="card">
             <div class="label">OPERATING SYSTEM</div>
-            <div class="value" id="os">
-                Wird erkannt ...
-            </div>
+            <div class="value" id="os">Wird erkannt ...</div>
         </div>
 
     </div>
@@ -276,14 +252,27 @@ detectDevice();
 """
 
 
+def get_public_ip():
+    # Render leitet die Besucher-IP über X-Forwarded-For weiter.
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+
+    if forwarded_for:
+        # Die erste Adresse ist üblicherweise die ursprüngliche Client-IP.
+        candidate = forwarded_for.split(",")[0].strip()
+    else:
+        candidate = request.remote_addr or ""
+
+    try:
+        return str(ipaddress.ip_address(candidate))
+    except ValueError:
+        return "IP nicht verfügbar"
+
+
 @app.route("/")
 def index():
-    # Besucher-IP aus der Verbindung ermitteln
-    public_ip = request.remote_addr or "Nicht verfügbar"
-
     return render_template_string(
         HTML,
-        public_ip=public_ip
+        public_ip=get_public_ip()
     )
 
 

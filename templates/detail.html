@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} — RED//MEDIA{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('index',category=item.category) }}">← ZURÜCK ZUM ARCHIV</a>
+<section class="detail-layout">
+<div class="detail-media">
+{% if item.resource_type == 'image' %}<img class="detail-image" src="{{ item.secure_url }}" alt="{{ item.title }}">
+{% elif item.resource_type == 'video' %}<video controls playsinline preload="metadata" src="{{ item.secure_url }}"></video>
+{% else %}<div class="file-hero"><div class="preview-icon">↧</div><span>{{ item.original_filename }}</span></div>{% endif %}
+</div>
+<div class="detail-info"><div class="eyebrow">{{ categories.get(item.category,'MEDIA')|upper }} / ITEM #{{ item.id }}</div><h1>{{ item.title }}</h1><p>{{ item.description or "Keine Beschreibung vorhanden." }}</p>
+<div class="detail-meta"><div><small>DATEI</small><strong>{{ item.original_filename }}</strong></div><div><small>FORMAT</small><strong>{{ item.file_format|upper or "—" }}</strong></div><div><small>UPLOAD</small><strong>{{ item.created_at }}</strong></div></div>
+<a class="button primary" href="{{ url_for('download_media',media_id=item.id) }}" target="_blank" rel="noopener">DATEI ÖFFNEN / DOWNLOAD ↗</a>
+</div></section>
+{% endblock %}

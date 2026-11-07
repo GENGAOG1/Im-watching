@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}RED//MEDIA — Archive{% endblock %}
+{% block content %}
+<section class="hero">
+<div class="eyebrow"><i class="pulse"></i> PUBLIC MEDIA ARCHIVE</div>
+<h1>YOUR MEDIA.<br><span>YOUR UNIVERSE.</span></h1>
+<p>Ein digitales Archiv für Bilder, Videos und Dateien.</p>
+<form class="searchbar" method="get"><input name="q" value="{{ search }}" placeholder="Suche nach Medien..." maxlength="100"><button>SEARCH ↗</button></form>
+</section>
+<section class="category-strip">
+<a class="category-chip {% if not selected_category %}active{% endif %}" href="/">ALLE <span>{{ media|length }}</span></a>
+{% for key,label in categories.items() %}<a class="category-chip {% if selected_category == key %}active{% endif %}" href="{{ url_for('index',category=key,q=search) }}">{{ label|upper }} <span>{{ counts[key] }}</span></a>{% endfor %}
+</section>
+<div class="section-heading"><div><div class="eyebrow">DATABASE / CONTENT</div><h2>{% if selected_category %}{{ categories[selected_category] }}{% else %}Neueste Uploads{% endif %}</h2></div><div class="count-label">{{ media|length }} ITEMS FOUND</div></div>
+{% if media %}
+<div class="media-grid">
+{% for item in media %}
+<a class="media-card" href="{{ url_for('media_detail',media_id=item.id) }}">
+<div class="media-preview">
+{% if item.resource_type == 'image' %}<img src="{{ item.secure_url }}" alt="{{ item.title }}" loading="lazy">
+{% elif item.resource_type == 'video' %}<div class="preview-icon">▶</div><span class="preview-label">VIDEO / AUDIO</span>
+{% else %}<div class="preview-icon">↧</div><span class="preview-label">FILE</span>{% endif %}
+<span class="corner-tag">{{ categories.get(item.category,'MEDIA')|upper }}</span>
+</div>
+<div class="card-info"><div class="card-title">{{ item.title }}</div><div class="card-desc">{{ item.description or item.original_filename }}</div><div class="card-meta"><span>{{ item.file_format|upper or 'MEDIA' }}</span><span>OPEN ↗</span></div></div>
+</a>
+{% endfor %}
+</div>
+{% else %}<div class="empty-state"><div class="empty-symbol">∅</div><h3>Keine Inhalte gefunden</h3><p>Hier ist noch nichts oder deine Suche hat keine Treffer.</p></div>{% endif %}
+{% endblock %}

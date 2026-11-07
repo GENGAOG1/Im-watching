@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel — RED//MEDIA{% endblock %}
+{% block content %}
+<section class="admin-header"><div><div class="eyebrow"><i class="pulse"></i> ADMIN CONTROL CENTER</div><h1>CONTROL<span>//</span>PANEL</h1><p>Uploads verwalten und öffentlich veröffentlichen.</p></div>
+<form method="post" action="{{ url_for('admin_logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button ghost">LOGOUT</button></form></section>
+<div class="admin-grid">
+<section class="admin-panel"><div class="panel-title"><span>01 / NEW UPLOAD</span><span class="status">● READY</span></div>
+<form method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data" class="panel-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label>TITEL</label><input name="title" placeholder="Name des Inhalts" required maxlength="120">
+<label>BESCHREIBUNG</label><textarea name="description" rows="3" maxlength="1000" placeholder="Optionale Beschreibung..."></textarea>
+<label>KATEGORIE</label><select name="category" required>{% for key,label in categories.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+<label>DATEI</label><input type="file" name="file" required><p class="form-note">App-Limit: {{ config.MAX_CONTENT_LENGTH // (1024 * 1024) }} MB. Cloudinary kann eigene Limits haben.</p>
+<button class="button primary full" type="submit">UPLOAD & PUBLISH ↗</button></form></section>
+<section class="admin-panel"><div class="panel-title"><span>02 / CONTENT DATABASE</span><span class="status">{{ media|length }} ITEMS</span></div>
+{% if media %}<div class="admin-list">{% for item in media %}<div class="admin-item"><div class="admin-item-main"><strong>{{ item.title }}</strong><small>{{ categories.get(item.category,item.category) }} · {{ item.original_filename }}</small></div><a class="mini-link" href="{{ url_for('media_detail',media_id=item.id) }}" target="_blank">VIEW</a>
+<form method="post" action="{{ url_for('delete_media',media_id=item.id) }}" onsubmit="return confirm('Diese Datei wirklich löschen?');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="delete-btn">DELETE</button></form></div>{% endfor %}</div>
+{% else %}<div class="empty-state compact"><h3>No uploads yet</h3><p>Dein erstes Medium erscheint hier.</p></div>{% endif %}
+</section></div>
+{% endblock %}

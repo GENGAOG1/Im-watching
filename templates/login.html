@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Admin Login — RED//MEDIA{% endblock %}
+{% block content %}
+<section class="login-shell"><div class="eyebrow"><i class="pulse"></i> RESTRICTED ACCESS</div><h1>ADMIN<span>//</span>LOGIN</h1><p class="muted">Nur für autorisierte Administratoren.</p>
+<form method="post" class="panel-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label>USERNAME</label><input name="username" autocomplete="username" required maxlength="80">
+<label>PASSWORD</label><input name="password" type="password" autocomplete="current-password" required>
+<button class="button primary full" type="submit">AUTHENTICATE ↗</button>
+</form></section>
+{% endblock %}

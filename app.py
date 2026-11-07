@@ -1,232 +1,57 @@
 
 import os
-import secrets
-import socket
-import platform
-import requests
+from datetime import datetime, timezone
 
-from flask import (
-    Flask,
-    request,
-    session,
-    redirect,
-    render_template_string,
-    url_for
-)
-
-# ==================================================
-# CONFIGURATION
-# ==================================================
+from flask import Flask, request, render_template_string
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
 
-app.secret_key = os.environ.get("SECRET_KEY")
-
-PASSWORD = os.environ.get("DASHBOARD_PASSWORD")
-
-if not app.secret_key or not PASSWORD:
-    raise RuntimeError(
-        "SECRET_KEY und DASHBOARD_PASSWORD müssen "
-        "in Render Environment Variables gesetzt sein."
-    )
-
-app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=True,
-    SESSION_COOKIE_SAMESITE="Lax",
-    PERMANENT_SESSION_LIFETIME=1800
+# Render verwendet einen Reverse Proxy.
+# Eine Proxy-Ebene wird berücksichtigt.
+app.wsgi_app = ProxyFix(
+    app.wsgi_app,
+    x_for=1,
+    x_proto=1
 )
-
 
 # ==================================================
 # NETWORK INFORMATION
 # ==================================================
 
 def get_public_ip():
-    try:
-        response = requests.get(
-            "https://api.ipify.org",
-            timeout=5
-        )
-        response.raise_for_status()
+    ip = request.remote_addr
 
-        return response.text.strip()
-
-    except requests.RequestException:
+    if not ip:
         return "Nicht verfügbar"
+
+    return ip
+
+
+def get_browser_info():
+    return request.headers.get(
+        "User-Agent",
+        "Unbekannt"
+    )
 
 
 def get_local_ip():
-    try:
-        connection = socket.socket(
-            socket.AF_INET,
-            socket.SOCK_DGRAM
-        )
-
-        connection.connect(("192.0.2.1", 80))
-
-        ip_address = connection.getsockname()[0]
-
-        connection.close()
-
-        return ip_address
-
-    except OSError:
-        return "Nicht verfügbar"
+    return "Nicht direkt im Browser verfügbar"
 
 
 def get_mac_address():
-    # Render besitzt eine eigene Netzwerkhardware.
-    # Deine persönliche MAC-Adresse ist nicht erreichbar.
-    return "Nicht verfügbar (Render-Server)"
+    return "Aus Datenschutzgründen nicht verfügbar"
 
 
 def get_wifi_name():
-    # Render läuft nicht in deinem persönlichen WLAN.
-    return "Nicht verfügbar (Render-Server)"
-
-
-def get_hostname():
-    return socket.gethostname()
+    return "Aus Datenschutzgründen nicht verfügbar"
 
 
 # ==================================================
-# HTML DESIGN
+# HTML
 # ==================================================
 
-LOGIN_HTML = """
-<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>RED // ACCESS</title>
-
-<style>
-* {
-    box-sizing: border-box;
-}
-
-body {
-    background: #050505;
-    color: #ff2020;
-    font-family: Consolas, monospace;
-
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    margin: 0;
-}
-
-.login {
-    width: 90%;
-    max-width: 420px;
-
-    padding: 35px;
-
-    background: #0b0b0b;
-
-    border: 1px solid #ff2020;
-
-    box-shadow:
-        0 0 25px #ff000022,
-        inset 0 0 20px #ff000008;
-}
-
-h1 {
-    text-align: center;
-    letter-spacing: 5px;
-    text-shadow: 0 0 15px red;
-}
-
-.subtitle {
-    text-align: center;
-    color: #8b2020;
-    font-size: 12px;
-    letter-spacing: 2px;
-}
-
-input {
-    width: 100%;
-    padding: 14px;
-
-    background: #050505;
-    color: #ff3030;
-
-    border: 1px solid #6b1717;
-
-    margin-top: 25px;
-    margin-bottom: 15px;
-
-    font-family: inherit;
-}
-
-button {
-    width: 100%;
-    padding: 14px;
-
-    background: #180000;
-    color: #ff2020;
-
-    border: 1px solid #ff2020;
-
-    font-family: inherit;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #ff2020;
-    color: black;
-}
-
-.error {
-    color: #ff5555;
-    text-align: center;
-}
-</style>
-</head>
-
-<body>
-
-<div class="login">
-
-    <h1>RED // ACCESS</h1>
-
-    <p class="subtitle">
-        PERSONAL NETWORK TERMINAL
-    </p>
-
-    {% if error %}
-        <p class="error">ACCESS DENIED</p>
-    {% endif %}
-
-    <form method="POST">
-
-        <input
-            type="password"
-            name="password"
-            placeholder="Enter access password"
-            autocomplete="current-password"
-            required
-        >
-
-        <button type="submit">
-            AUTHENTICATE
-        </button>
-
-    </form>
-
-</div>
-
-</body>
-</html>
-"""
-
-
-DASHBOARD_HTML = """
+HTML = """
 <!DOCTYPE html>
 <html lang="de">
 
@@ -245,17 +70,25 @@ DASHBOARD_HTML = """
     box-sizing: border-box;
 }
 
+:root {
+    --red: #ff2020;
+    --red-dark: #7a0808;
+    --background: #050505;
+    --card: #0d0d0d;
+}
+
 body {
     margin: 0;
 
-    background: #050505;
-
-    color: #ff2929;
+    background: var(--background);
+    color: var(--red);
 
     font-family: Consolas, monospace;
 
     min-height: 100vh;
 }
+
+/* Hintergrund */
 
 body::before {
     content: "";
@@ -279,16 +112,18 @@ body::before {
     pointer-events: none;
 }
 
+/* Header */
+
 header {
     text-align: center;
 
-    padding: 35px 15px;
+    padding: 40px 15px;
 
     border-bottom: 1px solid #ff292933;
 }
 
 h1 {
-    font-size: clamp(30px, 6vw, 55px);
+    font-size: clamp(28px, 6vw, 55px);
 
     letter-spacing: 8px;
 
@@ -297,19 +132,26 @@ h1 {
 
 .subtitle {
     color: #8b1717;
+
     letter-spacing: 4px;
+
+    font-size: 12px;
 }
 
+/* Layout */
+
 .container {
-    max-width: 1000px;
+    max-width: 1050px;
 
     margin: 40px auto;
 
     padding: 20px;
 }
 
+/* Status */
+
 .status {
-    border: 1px solid #ff2929;
+    border: 1px solid var(--red);
 
     padding: 15px;
 
@@ -317,6 +159,12 @@ h1 {
 
     box-shadow: 0 0 15px #ff000022;
 }
+
+.online {
+    animation: blink 2s infinite;
+}
+
+/* Cards */
 
 .grid {
     display: grid;
@@ -328,17 +176,19 @@ h1 {
 }
 
 .card {
-    background: #0d0d0d;
+    background: var(--card);
 
     border: 1px solid #5c1111;
 
     padding: 25px;
 
     transition: 0.2s;
+
+    min-width: 0;
 }
 
 .card:hover {
-    border-color: #ff2929;
+    border-color: var(--red);
 
     box-shadow: 0 0 20px #ff000033;
 
@@ -356,7 +206,7 @@ h1 {
 }
 
 .value {
-    font-size: 20px;
+    font-size: 18px;
 
     color: #ff4545;
 
@@ -365,12 +215,26 @@ h1 {
     text-shadow: 0 0 10px #ff000044;
 }
 
+/* Clock */
+
+.clock {
+    text-align: center;
+
+    margin: 30px;
+
+    font-size: 22px;
+
+    text-shadow: 0 0 12px red;
+}
+
+/* Button */
+
 button {
     background: #160000;
 
-    color: #ff2929;
+    color: var(--red);
 
-    border: 1px solid #ff2929;
+    border: 1px solid var(--red);
 
     padding: 12px 20px;
 
@@ -380,20 +244,12 @@ button {
 }
 
 button:hover {
-    background: #ff2929;
+    background: var(--red);
 
     color: black;
 }
 
-.clock {
-    text-align: center;
-
-    margin: 30px;
-
-    font-size: 20px;
-
-    text-shadow: 0 0 12px red;
-}
+/* Footer */
 
 footer {
     text-align: center;
@@ -406,11 +262,21 @@ footer {
 }
 
 .warning {
-    color: #aa5555;
+    color: #a52a2a;
 
     font-size: 12px;
 
-    margin-top: 20px;
+    line-height: 1.7;
+
+    margin-top: 25px;
+}
+
+/* Animation */
+
+@keyframes blink {
+    50% {
+        opacity: 0.4;
+    }
 }
 
 </style>
@@ -433,11 +299,11 @@ footer {
 
     <div class="status">
 
-        <span>● SYSTEM ONLINE</span>
+        <span class="online">● SYSTEM ONLINE</span>
 
         &nbsp; | &nbsp;
 
-        PRIVATE SESSION
+        CONNECTION ESTABLISHED
 
     </div>
 
@@ -450,7 +316,7 @@ footer {
         <div class="card">
 
             <div class="label">
-                SERVER PUBLIC IP
+                YOUR PUBLIC IP
             </div>
 
             <div class="value">
@@ -462,7 +328,7 @@ footer {
         <div class="card">
 
             <div class="label">
-                SERVER LOCAL IP
+                LOCAL IP ADDRESS
             </div>
 
             <div class="value">
@@ -498,11 +364,11 @@ footer {
         <div class="card">
 
             <div class="label">
-                OPERATING SYSTEM
+                BROWSER
             </div>
 
-            <div class="value">
-                {{ data.os }}
+            <div class="value" id="browser">
+                Wird erkannt ...
             </div>
 
         </div>
@@ -510,11 +376,11 @@ footer {
         <div class="card">
 
             <div class="label">
-                HOSTNAME
+                OPERATING SYSTEM
             </div>
 
-            <div class="value">
-                {{ data.hostname }}
+            <div class="value" id="os">
+                Wird erkannt ...
             </div>
 
         </div>
@@ -522,29 +388,21 @@ footer {
     </div>
 
     <p class="warning">
-        Diese Informationen beziehen sich auf den Render-Server,
-        nicht auf dein persönliches Gerät.
+        Hinweis: MAC-Adresse, WLAN-Name und lokale IP-Adresse
+        sind für normale Websites nicht zugänglich.
+        Deine öffentliche IP wird durch den Server ermittelt.
     </p>
 
     <br>
 
     <button onclick="location.reload()">
-        [ REFRESH ]
+        [ REFRESH DATA ]
     </button>
-
-    <form action="/logout" method="POST"
-          style="display:inline">
-
-        <button type="submit">
-            [ LOGOUT ]
-        </button>
-
-    </form>
 
 </div>
 
 <footer>
-    RED NETWORK // PRIVATE TERMINAL
+    RED NETWORK // CONNECTION TERMINAL
 </footer>
 
 <script>
@@ -556,14 +414,52 @@ function updateClock() {
 
 }
 
+function detectDevice() {
+
+    const ua = navigator.userAgent;
+
+    let browser = "Unbekannter Browser";
+
+    if (ua.includes("Firefox")) {
+        browser = "Mozilla Firefox";
+    } else if (ua.includes("Edg")) {
+        browser = "Microsoft Edge";
+    } else if (ua.includes("Chrome")) {
+        browser = "Google Chrome";
+    } else if (ua.includes("Safari")) {
+        browser = "Safari";
+    }
+
+    document.getElementById("browser").textContent =
+        browser;
+
+    let os = "Unbekannt";
+
+    if (ua.includes("Windows")) {
+        os = "Windows";
+    } else if (ua.includes("Android")) {
+        os = "Android";
+    } else if (ua.includes("iPhone")) {
+        os = "iOS";
+    } else if (ua.includes("Mac")) {
+        os = "macOS";
+    } else if (ua.includes("Linux")) {
+        os = "Linux";
+    }
+
+    document.getElementById("os").textContent = os;
+
+}
+
 updateClock();
 
 setInterval(updateClock, 1000);
 
+detectDevice();
+
 </script>
 
 </body>
-
 </html>
 """
 
@@ -572,71 +468,24 @@ setInterval(updateClock, 1000);
 # ROUTES
 # ==================================================
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/")
 def index():
 
-    if not session.get("authenticated"):
-
-        error = False
-
-        if request.method == "POST":
-
-            entered_password = request.form.get(
-                "password", ""
-            )
-
-            if secrets.compare_digest(
-                entered_password,
-                PASSWORD
-            ):
-
-                session.clear()
-
-                session["authenticated"] = True
-
-                session.permanent = True
-
-                return redirect(url_for("index"))
-
-            error = True
-
-        return render_template_string(
-            LOGIN_HTML,
-            error=error
-        )
-
     data = {
-
         "public_ip": get_public_ip(),
-
         "local_ip": get_local_ip(),
-
         "mac": get_mac_address(),
-
-        "wifi": get_wifi_name(),
-
-        "os": platform.system() + " " + platform.release(),
-
-        "hostname": get_hostname()
-
+        "wifi": get_wifi_name()
     }
 
     return render_template_string(
-        DASHBOARD_HTML,
+        HTML,
         data=data
     )
 
 
-@app.route("/logout", methods=["POST"])
-def logout():
-
-    session.clear()
-
-    return redirect(url_for("index"))
-
-
 # ==================================================
-# LOCAL DEVELOPMENT
+# START
 # ==================================================
 
 if __name__ == "__main__":

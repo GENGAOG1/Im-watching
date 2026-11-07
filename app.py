@@ -157,7 +157,7 @@ footer {
 <body>
 
 <header>
-    <h1>RED // NETWORK</h1>
+    <h1>GENGA NETWORK // WE ARE WATCHING</h1>
     <div class="subtitle">PERSONAL NETWORK TERMINAL</div>
 </header>
 
